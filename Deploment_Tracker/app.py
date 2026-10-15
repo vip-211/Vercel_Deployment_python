@@ -74,28 +74,28 @@ def get_slot_starts(change_type=None):
 
 
 SLOT_CONSTRAINT = "no_overlapping_deployment_slots"
-# def get_connection():
-#     return psycopg2.connect(
-#         host=os.environ["DB_HOST"],
-#         port=int(os.getenv("DB_PORT", "5432")),
-#         dbname=os.environ["DB_NAME"],
-#         user=os.environ["DB_USER"],
-#         password=os.environ["DB_PASSWORD"],
-#         sslmode=os.getenv("DB_SSLMODE", "require"),
-#         connect_timeout=15,
-#         application_name="Flask Deployment Tracker",
-#     )
-
 def get_connection():
     return psycopg2.connect(
-        host=os.getenv("DB_HOST"),
+        host=os.environ["DB_HOST"],
         port=int(os.getenv("DB_PORT", "5432")),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        sslmode="disable",
-        connect_timeout=10
+        dbname=os.environ["DB_NAME"],
+        user=os.environ["DB_USER"],
+        password=os.environ["DB_PASSWORD"],
+        sslmode=os.getenv("DB_SSLMODE", "require"),
+        connect_timeout=15,
+        application_name="Flask Deployment Tracker",
     )
+
+# def get_connection():
+#     return psycopg2.connect(
+#         host=os.getenv("DB_HOST"),
+#         port=int(os.getenv("DB_PORT", "5432")),
+#         dbname=os.getenv("DB_NAME"),
+#         user=os.getenv("DB_USER"),
+#         password=os.getenv("DB_PASSWORD"),
+#         sslmode="disable",
+#         connect_timeout=10
+#     )
 
 def normalize_audit_email(value):
     """Normalize and validate an email used as a Modified By identity."""
