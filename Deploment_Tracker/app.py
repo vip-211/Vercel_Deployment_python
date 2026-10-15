@@ -30,20 +30,34 @@ if not app.secret_key:
     )
 
 AUDIT_PASSCODE_PEPPER = os.getenv("AUDIT_PASSCODE_PEPPER") or app.secret_key
-LOG_DIR = BASE_DIR / "logs"
-LOG_DIR.mkdir(exist_ok=True)
+LOG_DIR = BLOG_DIR = BASE_DIR / "logs"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler(
-            LOG_DIR / "app.log",
-            encoding="utf-8",
-        ),
-        logging.StreamHandler(),
-    ],
-)
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+
+if os.getenv("VERCEL"):
+    # Vercel: write logs to stdout so they appear in Function Logs.
+    logging.basicConfig(
+        level=logging.INFO,
+        format=LOG_FORMAT,
+        handlers=[logging.StreamHandler()],
+        force=True,
+    )
+else:
+    # Local development: write logs to both a file and the console.
+    LOG_DIR.mkdir(exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format=LOG_FORMAT,
+        handlers=[
+            logging.FileHandler(
+                LOG_DIR / "app.log",
+                encoding="utf-8",
+            ),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
+
 
 CHANGE_TYPES = [
     "Normal CR",
