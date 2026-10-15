@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Governance Tracker</title>
+
+  <style>
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; padding: 28px 16px; background: #f3f5f9; color: #1e293b; font-family: Arial, sans-serif; }
+
+    .container { max-width: 1540px; margin: auto; }
+    .header { margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    h2 { margin-top: 0; }
+    .subtitle, .muted { color: #64748b; line-height: 1.6; }
+    .card { margin-bottom: 22px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 14px; background: white; box-shadow: 0 5px 20px #00000008; }
+    .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 390px); align-items: start; gap: 16px; }
+    .main-column { min-width: 0; }
+    .schedule-card { min-width: 0; width: 100%; max-width: 390px; justify-self: end; align-self: start; position: sticky; top: 16px; max-height: 440px; padding: 16px; overflow: auto; }
+    .schedule-card h2 { font-size: 18px; line-height: 1.25; }
+    .schedule-card > .muted { font-size: 12px; line-height: 1.45; }
+    .schedule-toolbar { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 10px 0 9px; }
+    .schedule-toolbar button { padding: 7px 8px; font-size: 11px; }
+    .schedule-toolbar .date-nav { min-width: 30px; font-size: 16px; padding: 5px 8px; }
+    .schedule-toolbar .date-shortcut { background: #eef2ff; color: #2448b8; }
+    .schedule-toolbar .date-shortcut.active { background: #2457d6; color: white; }
+    .schedule-date-input { margin-bottom: 8px; }
+    .schedule-date-input label { font-size: 11px; margin-bottom: 4px; }
+    .schedule-date-input input { padding: 9px 10px; font-size: 12px; }
+    .schedule-meta { color: #64748b; font-size: 11px; margin: 6px 0; }
+    .schedule-table { white-space: normal; font-size: 11px; }
+    .schedule-table th, .schedule-table td { padding: 8px 7px; vertical-align: middle; }
+    .schedule-table th { position: sticky; top: 0; z-index: 1; }
+    .schedule-table tbody tr { cursor: pointer; transition: background .12s; }
+    .schedule-table tbody tr:hover { background: #eff6ff; }
+    .schedule-table tbody tr.selected { background: #dbeafe; }
+    .schedule-cr { font-weight: 800; color: #1d4ed8; font-size: 13px; }
+    .schedule-app { color: #334155; font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+    .schedule-status { display: inline-block; margin-top: 6px; padding: 3px 7px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 10px; font-weight: 700; }
+    .schedule-status.pending, .schedule-status.approved, .schedule-status.scheduled { background: #fef3c7; color: #92400e; }
+    .schedule-status.successful { background: #dcfce7; color: #166534; }
+    .schedule-status.failed, .schedule-status.rejected, .schedule-status.cancelled { background: #fee2e2; color: #991b1b; }
+    .schedule-time-button { background: #eef2ff; color: #2448b8; border: 1px solid #c7d2fe; padding: 6px 5px; border-radius: 8px; font-size: 10px; width: 100%; line-height: 1.35; }
+    .schedule-time-button:hover { background: #dbeafe; }
+    .schedule-empty { color: #64748b; text-align: center; white-space: normal; line-height: 1.5; padding: 14px 8px !important; }
+    .search-row { display: flex; align-items: end; gap: 12px; }
+    .search-field { flex: 1; min-width: 0; }
+
+    label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+    .required-star { color: #dc2626; font-weight: 700; }
+
+    input, textarea, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; font: inherit; }
+
+    input:focus, textarea:focus, select:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+    input[readonly], textarea[readonly] { background: #f8fafc; color: #475569; }
+
+    button { padding: 12px 18px; border: 0; border-radius: 8px; background: #2457d6; color: white; font-weight: 700; cursor: pointer; }
+
+    button:hover { filter: brightness(.94); }
+
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .secondary { background: #475569; }
+    .approve { background: #15803d; }
+    .reject { background: #b91c1c; }
+    .message { display: none; margin-top: 16px; padding: 12px 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+    .message.success { display: block; color: #166534; background: #dcfce7; border: 1px solid #86efac; }
+    .message.error { display: block; color: #991b1b; background: #fee2e2; border: 1px solid #fca5a5; }
+    .table-wrap { overflow-x: auto; margin-top: 16px; }
+
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; color: #475569; font-size: 13px; }
+    tbody tr.request-row { cursor: pointer; }
+    tbody tr.request-row:hover { background: #eff6ff; }
+    .details-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .details-header h2 { margin: 0; font-size: 20px; }
+    .badge { display: inline-block; padding: 6px 10px; border-radius: 20px; background: #dbeafe; color: #1d4ed8; font-size: 12px; font-weight: 700; }
+    .details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+
+    textarea { min-height: 100px; resize: vertical; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .hidden { display: none !important; }
+    .footer-note { margin-top: 18px; color: #64748b; font-size: 12px; line-height: 1.6; }
+    .schedule-card .footer-note { margin-top: 10px; font-size: 10px; line-height: 1.45; }
+    .back-link { display: inline-block; margin-top: 4px; color: #2457d6; text-decoration: none; font-weight: 700; }
+
+    @media (max-width: 1000px) {
+  .workspace-grid { grid-template-columns: 1fr; }
+  .schedule-card { position: static; max-height: none; }
+}
+
+    @media (max-width: 650px) {
+  .search-row { align-items: stretch; flex-direction: column; }
+  .search-row button { width: 100%; }
+  .details-grid { grid-template-columns: 1fr; }
+  .field.full { grid-column: auto; }
+  .card { padding: 18px; }
+}
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <header class="header">
+    <h1>Governance Tracker</h1>
+    <p class="subtitle">Review pending deployment requests, open a request to view its details, and approve or reject it.</p>
+  </header>
+
+  <div class="workspace-grid">
+
+    <div class="main-column">
+
+  <section class="card">
+
+    <h2>Pending Deployment Requests</h2>
+
+    <p class="muted">Select a row to load that exact request. This works even when multiple records share the same CR number.</p>
+
+    <button type="button" class="secondary" id="refreshPendingButton">Refresh Pending Requests</button>
+
+    <div id="pendingMessage" class="muted" role="status" aria-live="polite" style="margin-top:12px">Loading pending requests...</div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>CR Number</th><th>RFID</th><th>Application</th><th>Deployment Date</th><th>Slot</th><th>Deployment Type</th><th>Change Type</th></tr></thead>
+        <tbody id="pendingRequestsBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <section class="card">
+
+    <h2>Find a Deployment by CR</h2>
+
+    <div class="search-row">
+
+      <div class="search-field">
+        <label for="crNumber">CR Number</label>
+        <input id="crNumber" type="text" inputmode="numeric" placeholder="Enter CR number, e.g. 12345" autocomplete="off">
+      </div>
+      <button type="button" id="fetchButton">Fetch Details</button>
+    </div>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+
+    <div id="crResultsSection" class="hidden" style="margin-top:18px;">
+
+      <h3>Deployment Requests for this CR</h3>
+
+      <p class="muted">Select any request to open its complete details below.</p>
+
+      <div id="crResultsCount" class="muted" style="margin-bottom:10px;"></div>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Select</th><th>CR Number</th><th>RFID</th><th>Application</th><th>Deployment Date</th><th>Slot</th><th>Deployment Type</th><th>Change Type</th><th>Status</th></tr></thead>
+        <tbody id="crResultsBody"></tbody>
+      </table></div>
+    </div>
+
+  </section>
+
+  <section id="detailsCard" class="card hidden">
+
+    <div class="details-header">
+      <h2>Deployment Details</h2>
+      <span id="resultBadge" class="badge">Record found</span>
+    </div>
+
+    <div class="details-grid">
+      <div class="field"><label for="out_cr_number">CR Number</label><input id="out_cr_number" readonly></div>
+      <div class="field"><label for="out_rfid">RFID</label><input id="out_rfid" readonly></div>
+      <div class="field"><label for="out_deployment_date">Deployment Date</label><input id="out_deployment_date" type="date" required></div>
+      <div class="field"><label for="out_slot_start">Slot Start</label><input id="out_slot_start" type="time" step="60" required></div>
+      <div class="field"><label for="out_application_name">Application</label><input id="out_application_name" required></div>
+      <div class="field"><label for="out_deployment_type">Deployment Type</label><select id="out_deployment_type" required>{% for item in deployment_types %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="out_change_type">Change Type</label><select id="out_change_type" required>{% for item in change_types %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="out_status">Status</label><select id="out_status" required>{% for item in statuses %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+
+      <div class="field">
+        <label for="out_released_by">Released By <span class="required-star">*</span></label>
+        <select id="out_released_by" required>
+          <option value="">Select User</option>
+          {% for user in released_by_users %}
+          <option value="{{ user }}">{{ user }}</option>
+          {% endfor %}
+          <option value="__add__">Add Name...</option>
+        </select>
+
+        <div id="outReleasedByNewWrap" class="hidden" style="margin-top: 10px;">
+          <input
+            type="text"
+            id="out_released_by_new"
+            placeholder="Enter new user name"
+            maxlength="100"
+           >
+        </div>
+
+      </div>
+
+      <div class="field">
+        <label for="out_verified_by">Verified and Deployed By <span class="required-star">*</span></label>
+        <select id="out_verified_by" required>
+          <option value="">Select User</option>
+          {% for item in verified_by_options %}
+          <option value="{{ item }}">{{ item }}</option>
+          {% endfor %}
+          <option value="__others__">Others</option>
+        </select>
+
+        <div id="outVerifiedByOtherWrap" class="hidden" style="margin-top: 10px;">
+          <input
+            type="text"
+            id="out_verified_by_other"
+            placeholder="Enter name"
+            maxlength="100"
+          >
+        </div>
+      </div>
+
+      <div class="field"><label for="out_change_requestor">Change Requestor <span class="required-star">*</span></label><input id="out_change_requestor" required maxlength="150" placeholder="Business Owner Name"></div>
+
+      <div class="field"><label for="out_incident_number">Incident Number</label><input id="out_incident_number"></div>
+
+      <div class="field"><label for="out_roll_back">Roll Back</label><select id="out_roll_back" required><option value="No">No</option><option value="Yes">Yes</option></select></div>
+
+      <div class="field full"><label for="out_release_notes">Release Notes</label><textarea id="out_release_notes"></textarea></div>
+
+      <div class="field full"><label for="out_comments">Comments <span class="muted" style="font-weight:400">(optional)</span></label><textarea id="out_comments" maxlength="5000" placeholder="Add optional comments for this deployment..."></textarea></div>
+
+    </div>
+
+    <div class="field full">
+
+      <label for="out_modified_by">Modified By Email <span class="required-star">*</span></label>
+
+      <select id="out_modified_by" required>
+
+        <option value="">Select User</option>
+
+        {% for email in audit_user_emails %}
+
+        <option value="{{ email }}">{{ email }}</option>
+
+        {% endfor %}
+
+        <option value="__add__">Add Email...</option>
+
+      </select>
+
+    </div>
+
+    <div id="addAuditUserWrap" class="field full hidden">
+      <label for="newAuditEmail">New User Email <span class="required-star">*</span></label>
+      <input id="newAuditEmail" type="email" maxlength="254" autocomplete="email" placeholder="user\@company.com">
+      <button type="button" id="registerAuditUserButton" style="margin-top:10px">Add Email &amp; Generate Passcode</button>
+    </div>
+
+    <div id="newAuditPasscodePanel" class="field full hidden" role="status" aria-live="polite" style="padding:14px;border:1px solid #fbbf24;border-radius:10px;background:#fffbeb">
+      <label>Save this passcode for future use</label>
+      <p style="margin:6px 0 10px;color:#92400e">This 4-digit passcode is shown only once. Keep it private; you will need it when you use this email again.</p>
+      <div id="newAuditPasscodeValue" style="font-size:28px;font-weight:800;letter-spacing:8px;color:#1e293b"></div>
+      <button type="button" id="confirmAuditPasscodeSaved" style="margin-top:12px">I've saved my passcode</button>
+    </div>
+
+    <div id="auditPasscodeWrap" class="field full hidden">
+      <label for="out_modified_by_passcode">4-Digit Passcode <span class="required-star">*</span></label>
+      <input id="out_modified_by_passcode" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="Enter the passcode for this email">
+      <p class="muted" style="margin:6px 0 0;font-size:12px">Your passcode is checked against the selected email. Five incorrect attempts lock that email for 15 minutes.</p>
+    </div>
+
+    <div class="button-row">
+      <button type="button" id="saveChangesButton">Save Changes</button>
+      <button type="button" class="approve" id="approveButton">Approve Request</button>
+      <button type="button" class="reject" id="rejectButton">Reject Request</button>
+    </div>
+
+    <p class="footer-note">Save Changes updates the editable fields. Approve or Reject changes the status only while the request is still Pending.</p>
+
+  </section>
+
+  <a class="back-link" href="/">← Back to Deployment Tracker</a>
+
+    </div>
+
+    <aside class="card schedule-card" aria-label="Daily deployment schedule">
+
+      <h2 style="margin-bottom:6px">Daily Deployment Schedule</h2>
+
+      <p class="muted" style="margin:0">Select a date to see deployments. Click a CR/application or slot time to open that exact record.</p>
+
+      <div class="schedule-toolbar" aria-label="Schedule date navigation">
+        <button type="button" class="secondary date-nav" id="schedulePreviousDay" aria-label="Previous day" title="Previous day">‹</button>
+        <button type="button" class="date-shortcut" id="scheduleYesterday">Yesterday</button>
+        <button type="button" class="date-shortcut active" id="scheduleToday">Today</button>
+        <button type="button" class="date-shortcut" id="scheduleTomorrow">Tomorrow</button>
+        <button type="button" class="secondary date-nav" id="scheduleNextDay" aria-label="Next day" title="Next day">›</button>
+      </div>
+
+      <div class="schedule-date-input">
+        <label for="scheduleDateInput">Go to date</label>
+        <input type="date" id="scheduleDateInput" aria-label="Choose a schedule date">
+      </div>
+
+      <div id="scheduleDateLabel" class="schedule-meta" aria-live="polite">Loading schedule...</div>
+
+      <div id="scheduleMessage" class="schedule-meta" role="status" aria-live="polite">Loading deployments...</div>
+
+      <div class="table-wrap">
+        <table class="schedule-table">
+          <thead><tr><th>CR Number / Application</th><th>Slot Timing</th></tr></thead>
+          <tbody id="dailyScheduleBody"><tr><td colspan="2" class="schedule-empty">Loading today's deployments...</td></tr></tbody>
+        </table>
+      </div>
+
+      <p class="footer-note">The schedule is ordered by slot start time. Rejected and cancelled records remain visible so the engineer can open their details as well.</p>
+    </aside>
+  </div>
+
+</div>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+  const crInput = document.getElementById("crNumber");
+  const fetchButton = document.getElementById("fetchButton");
+  const message = document.getElementById("message");
+  const detailsCard = document.getElementById("detailsCard");
+  const saveChangesButton = document.getElementById("saveChangesButton");
+  const approveButton = document.getElementById("approveButton");
+  const rejectButton = document.getElementById("rejectButton");
+  const pendingBody = document.getElementById("pendingRequestsBody");
+  const pendingMessage = document.getElementById("pendingMessage");
+  const scheduleDateInput = document.getElementById("scheduleDateInput");
+  const scheduleDateLabel = document.getElementById("scheduleDateLabel");
+  const scheduleMessage = document.getElementById("scheduleMessage");
+  const dailyScheduleBody = document.getElementById("dailyScheduleBody");
+  const schedulePreviousDay = document.getElementById("schedulePreviousDay");
+  const scheduleNextDay = document.getElementById("scheduleNextDay");
+  const scheduleYesterday = document.getElementById("scheduleYesterday");
+  const scheduleToday = document.getElementById("scheduleToday");
+  const scheduleTomorrow = document.getElementById("scheduleTomorrow");
+
+  let selectedScheduleDate = localDateString(new Date());
+
+  const releasedBySelect = document.getElementById("out_released_by");
+  const releasedByNewWrap = document.getElementById("outReleasedByNewWrap");
+  const releasedByNewInput = document.getElementById("out_released_by_new");
+  const verifiedBySelect = document.getElementById("out_verified_by");
+  const verifiedByOtherWrap = document.getElementById("outVerifiedByOtherWrap");
+  const verifiedByOtherInput = document.getElementById("out_verified_by_other");
+  const auditUserSelect = document.getElementById("out_modified_by");
+  const addAuditUserWrap = document.getElementById("addAuditUserWrap");
+  const newAuditEmailInput = document.getElementById("newAuditEmail");
+  const registerAuditUserButton = document.getElementById("registerAuditUserButton");
+  const newAuditPasscodePanel = document.getElementById("newAuditPasscodePanel");
+  const newAuditPasscodeValue = document.getElementById("newAuditPasscodeValue");
+  const confirmAuditPasscodeSaved = document.getElementById("confirmAuditPasscodeSaved");
+  const auditPasscodeWrap = document.getElementById("auditPasscodeWrap");
+  const auditPasscodeInput = document.getElementById("out_modified_by_passcode");
+
+  let awaitingPasscodeAcknowledgement = false;
+  let pendingPasscodeEmail = null;
+  let currentDeploymentId = null;
+
+  function toggleAuditIdentityFields() {
+    const adding = auditUserSelect.value === "__add__";
+    addAuditUserWrap.classList.toggle("hidden", !adding);
+    const showPasscode = Boolean(auditUserSelect.value) && !adding && !awaitingPasscodeAcknowledgement;
+    auditPasscodeWrap.classList.toggle("hidden", !showPasscode);
+    auditPasscodeInput.required = showPasscode;
+
+    if (adding) auditPasscodeInput.value = "";
+  }
+  auditUserSelect.addEventListener("change", function () {
+
+    if (awaitingPasscodeAcknowledgement && pendingPasscodeEmail && auditUserSelect.value !== pendingPasscodeEmail) {
+      showMessage("Please save the newly generated passcode before changing the selected email.", "error");
+      auditUserSelect.value = pendingPasscodeEmail;
+      return;
+    }
+
+    auditPasscodeInput.value = "";
+
+    awaitingPasscodeAcknowledgement = false;
+
+      pendingPasscodeEmail = null;
+
+      newAuditPasscodePanel.classList.add("hidden");
+
+      newAuditPasscodeValue.textContent = "";
+
+
+    toggleAuditIdentityFields();
+  });
+
+  toggleAuditIdentityFields();
+
+  registerAuditUserButton.addEventListener("click", async function () {
+
+    const email = newAuditEmailInput.value.trim().toLowerCase();
+
+    if (!email || !newAuditEmailInput.checkValidity()) {
+
+      showMessage("Enter a valid email address before adding a user.", "error");
+
+      newAuditEmailInput.focus();
+      return;
+    }
+
+    registerAuditUserButton.disabled = true;
+
+    registerAuditUserButton.textContent = "Registering...";
+
+    try {
+      const response = await fetch("/api/audit-users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ email })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Could not register the email.");
+      let option = Array.from(auditUserSelect.options).find(item => item.value === result.email);
+
+      if (!option) {
+        option = new Option(result.email, result.email);
+        const addOption = Array.from(auditUserSelect.options).find(item => item.value === "__add__");
+        auditUserSelect.add(option, addOption || null);
+      }
+
+      auditUserSelect.value = result.email;
+
+      auditPasscodeInput.value = "";
+
+      awaitingPasscodeAcknowledgement = true;
+
+      pendingPasscodeEmail = result.email;
+
+      newAuditPasscodeValue.textContent = result.passcode;
+
+      newAuditPasscodePanel.classList.remove("hidden");
+
+      showMessage("Email registered. Save the passcode shown on the page before continuing.", "success");
+
+      toggleAuditIdentityFields();
+
+    } catch (error) {
+
+      showMessage(error.message || "Could not register the email.", "error");
+
+    } finally {
+      registerAuditUserButton.disabled = false;
+      registerAuditUserButton.textContent = "Add Email & Generate Passcode";
+    }
+  });
+
+  confirmAuditPasscodeSaved.addEventListener("click", function () {
+
+    awaitingPasscodeAcknowledgement = false;
+
+    pendingPasscodeEmail = null;
+
+    newAuditPasscodePanel.classList.add("hidden");
+
+    newAuditPasscodeValue.textContent = "";
+
+    auditPasscodeInput.value = "";
+
+    toggleAuditIdentityFields();
+
+    auditPasscodeInput.focus();
+
+    showMessage("Now enter the passcode you saved to authorize your change.", "success");
+  });
+
+  function getAuditCredentials() {
+
+    const email = auditUserSelect.value.trim().toLowerCase();
+
+    const passcode = auditPasscodeInput.value.trim();
+
+    if (!email || email === "__add__") {
+      showMessage("Select a registered email, or use Add Email first.", "error");
+      auditUserSelect.focus();
+      return null;
+    }
+
+    if (awaitingPasscodeAcknowledgement) {
+      showMessage("Please confirm that you saved the new passcode first.", "error");
+      confirmAuditPasscodeSaved.focus();
+      return null;
+    }
+
+    if (!/^\d{4}$/.test(passcode)) {
+      showMessage("Enter the 4-digit passcode for the selected email.", "error");
+      auditPasscodeInput.focus();
+      return null;
+    }
+
+    return { modified_by: email, modified_by_passcode: passcode };
+  }
+
+  function toggleVerifiedByOtherName() {
+
+    const usingOthers = verifiedBySelect.value === "__others__";
+    verifiedByOtherWrap.classList.toggle("hidden", !usingOthers);
+    verifiedByOtherInput.required = usingOthers;
+  }
+
+  verifiedBySelect.addEventListener("change", toggleVerifiedByOtherName);
+  toggleVerifiedByOtherName();
+
+  function populateVerifiedBy(value) {
+    const savedValue = String(value || "").trim();
+    const standardValues = ["DBA TEAM", "MW TEAM", "DevOps Team"];
+
+    if (!savedValue) {
+      verifiedBySelect.value = "";
+      verifiedByOtherInput.value = "";
+
+    } else if (standardValues.includes(savedValue)) {
+      verifiedBySelect.value = savedValue;
+      verifiedByOtherInput.value = "";
+    } else {
+
+      verifiedBySelect.value = "__others__";
+
+      verifiedByOtherInput.value = savedValue;
+
+    }
+
+    toggleVerifiedByOtherName();
+
+  }
+
+  function toggleReleasedByNewName() {
+    const adding = releasedBySelect.value === "__add__";
+    releasedByNewWrap.classList.toggle("hidden", !adding);
+    releasedByNewInput.required = adding;
+  }
+
+  releasedBySelect.addEventListener("change", toggleReleasedByNewName);
+
+  toggleReleasedByNewName();
+
+  function normalizeCR(value) {
+    const suffix = String(value || "").trim().replace(/^CR-/i, "");
+    return /^\d+$/.test(suffix) ? "CR-" + suffix : null;
+  }
+
+  function showMessage(text, type) {
+    message.textContent = text;
+    message.className = "message " + type;
+  }
+
+  function setField(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value === null || value === undefined ? "" : String(value);
+  }
+
+  function formatTime(value) {
+    if (!value) return "";
+    const s = String(value);
+    const match = s.match(/(?:T|^)(\d{2}):(\d{2})/);
+    return match ? match[1] + ":" + match[2] : s.substring(0, 5);
+  }
+
+  function displayTime(value) {
+    if (!value) return "";
+    const match = String(value).match(/(?:T|^)(\d{2}):(\d{2})/);
+
+    if (!match) return String(value);
+    let hour = Number(match[1]);
+
+    const suffix = hour >= 12 ? "PM" : "AM";
+
+    hour = ((hour + 11) % 12) + 1;
+    return hour + ":" + match[2] + " " + suffix;
+  }
+
+  function parseDate(value) {
+
+    if (!value) return null;
+    const parts = String(value).split("-").map(Number);
+
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+    const parsed = new Date(parts[0], parts[1] - 1, parts[2]);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function localDateString(dateValue) {
+    const year = dateValue.getFullYear();
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function readableScheduleDate(value) {
+    const dateValue = parseDate(value);
+
+    if (!dateValue) return value || "";
+    return dateValue.toLocaleDateString(undefined, {
+
+      weekday: "long", year: "numeric", month: "short", day: "numeric"
+    });
+  }
+
+  function setScheduleShortcutState() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const shortcutValues = [
+      [scheduleYesterday, localDateString(yesterday)],
+      [scheduleToday, localDateString(today)],
+      [scheduleTomorrow, localDateString(tomorrow)]
+    ];
+
+    shortcutValues.forEach(([button, value]) => {
+      button.classList.toggle("active", selectedScheduleDate === value);
+    });
+
+  }
+
+  function openScheduleDeployment(record, row) {
+
+    try {
+      document.querySelectorAll("#dailyScheduleBody tr.selected").forEach(item => item.classList.remove("selected"));
+
+      if (row) row.classList.add("selected");
+      populateDetails(record);
+      showMessage("Loaded " + (record.cr_number || "deployment") +
+        " (record ID " + record.id + ") for " + readableScheduleDate(selectedScheduleDate) + ".", "success");
+      detailsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    } catch (error) {
+      showMessage(error.message || "Could not open the selected deployment.", "error");
+    }
+
+  }
+
+  async function loadDailySchedule() {
+
+    if (!selectedScheduleDate) return;
+    scheduleDateInput.value = selectedScheduleDate;
+    scheduleDateLabel.textContent = readableScheduleDate(selectedScheduleDate);
+    setScheduleShortcutState();
+    scheduleMessage.textContent = "Loading deployments...";
+    dailyScheduleBody.replaceChildren();
+    const loadingRow = document.createElement("tr");
+    const loadingCell = document.createElement("td");
+    loadingCell.colSpan = 2;
+    loadingCell.className = "schedule-empty";
+    loadingCell.textContent = "Loading deployments...";
+    loadingRow.appendChild(loadingCell);
+    dailyScheduleBody.appendChild(loadingRow);
+
+    try {
+      const response = await fetch("/api/deployments-by-date?date=" + encodeURIComponent(selectedScheduleDate), {
+        headers: { Accept: "application/json" }, cache: "no-store"
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Unable to load schedule.");
+      const deployments = Array.isArray(result.deployments) ? result.deployments : [];
+      dailyScheduleBody.replaceChildren();
+      scheduleMessage.textContent = deployments.length + " deployment(s) on this date";
+
+      if (!deployments.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 2;
+        cell.className = "schedule-empty";
+        cell.textContent = "No deployment records found for this date.";
+        row.appendChild(cell);
+        dailyScheduleBody.appendChild(row);
+        return;
+      }
+
+      deployments.forEach(record => {
+        const row = document.createElement("tr");
+        row.className = "schedule-row";
+        row.tabIndex = 0;
+        row.setAttribute("role", "button");
+        row.setAttribute("aria-label", `Open ${record.cr_number || "deployment"}, ${record.application_name || "application"}, ${displayTime(record.slot_start)} slot`);
+        const deploymentCell = document.createElement("td");
+        const cr = document.createElement("div");
+        cr.className = "schedule-cr";
+        cr.textContent = record.cr_number || "No CR number";
+        const application = document.createElement("div");
+        application.className = "schedule-app";
+        application.textContent = record.application_name || "Application not specified";
+        const status = document.createElement("span");
+        const statusText = String(record.status || "Pending");
+        status.className = "schedule-status " + statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        status.textContent = statusText;
+        deploymentCell.append(cr, application, status);
+
+        const slotCell = document.createElement("td");
+        const slotButton = document.createElement("button");
+
+        slotButton.type = "button";
+        slotButton.className = "schedule-time-button";
+        slotButton.textContent = (record.slot_start ? displayTime(record.slot_start) : "Time not set") +
+          (record.slot_end ? " – " + displayTime(record.slot_end) : "");
+
+        slotButton.setAttribute("aria-label", "Open deployment at " + slotButton.textContent);
+
+        slotCell.appendChild(slotButton);
+
+        row.append(deploymentCell, slotCell);
+        row.addEventListener("click", () => openScheduleDeployment(record, row));
+        row.addEventListener("keydown", event => {
+
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openScheduleDeployment(record, row);
+          }
+
+        });
+
+        slotButton.addEventListener("click", event => {
+          event.stopPropagation();
+          openScheduleDeployment(record, row);
+        });
+
+        dailyScheduleBody.appendChild(row);
+      });
+
+    } catch (error) {
+      scheduleMessage.textContent = error.message || "Unable to load deployments.";
+      dailyScheduleBody.replaceChildren();
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 2;
+      cell.className = "schedule-empty";
+      cell.textContent = "Could not load the schedule. Check Flask logs.";
+      row.appendChild(cell);
+      dailyScheduleBody.appendChild(row);
+      console.error("Daily schedule error:", error);
+    }
+
+  }
+
+  function moveScheduleDate(days) {
+    const current = parseDate(selectedScheduleDate) || new Date();
+    current.setDate(current.getDate() + days);
+    selectedScheduleDate = localDateString(current);
+    loadDailySchedule();
+  }
+
+  function jumpScheduleDate(daysFromToday) {
+    const target = new Date();
+    target.setHours(0, 0, 0, 0);
+    target.setDate(target.getDate() + daysFromToday);
+    selectedScheduleDate = localDateString(target);
+    loadDailySchedule();
+  }
+
+  function populateDetails(record) {
+
+    if (!record || record.id === undefined || record.id === null) throw new Error("The selected request does not contain a deployment ID.");
+    currentDeploymentId = record.id;
+    setField("out_cr_number", record.cr_number);
+    setField("out_rfid", record.rfid);
+    setField("out_deployment_date", record.deployment_date ? String(record.deployment_date).substring(0, 10) : "");
+    setField("out_slot_start", formatTime(record.slot_start));
+    setField("out_application_name", record.application_name);
+    setField("out_deployment_type", record.deployment_type);
+    setField("out_change_type", record.change_type);
+    setField("out_status", record.status || "Pending");
+    setField("out_released_by", record.released_by);
+
+    releasedByNewInput.value = "";
+    toggleReleasedByNewName();
+    populateVerifiedBy(record.verified_and_deployed_by);
+    setField("out_change_requestor", record.change_requestor);
+    setField("out_incident_number", record.incident_number);
+    setField("out_roll_back", record.roll_back || "No");
+    setField("out_release_notes", record.release_notes);
+    setField("out_comments", record.comments);
+    document.getElementById("resultBadge").textContent = record.status || "Pending";
+
+    crInput.value = record.cr_number || "";
+
+    detailsCard.classList.remove("hidden");
+
+    const isPending = String(record.status || "Pending").toLowerCase() === "pending";
+
+    approveButton.disabled = !isPending;
+
+    rejectButton.disabled = !isPending;
+  }
+
+  async function fetchDetails() {
+    const crNumber = normalizeCR(crInput.value);
+    const resultsSection = document.getElementById("crResultsSection");
+    const resultsBody = document.getElementById("crResultsBody");
+    const resultsCount = document.getElementById("crResultsCount");
+    resultsSection.classList.add("hidden");
+    resultsBody.replaceChildren();
+    detailsCard.classList.add("hidden");
+
+    if (!crNumber) {
+      showMessage("Enter a valid CR Number containing digits, for example 12345.", "error");
+      crInput.focus();
+      return;
+    }
+
+    fetchButton.disabled = true;
+    fetchButton.textContent = "Fetching...";
+
+    try {
+      const response = await fetch("/api/deployment-by-cr?cr_number=" + encodeURIComponent(crNumber), {
+        headers: { Accept: "application/json" }, cache: "no-store"
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Could not retrieve deployment details.");
+      const deployments = Array.isArray(result.deployments) ? result.deployments : [];
+
+      if (!deployments.length) throw new Error("No deployment requests found.");
+      resultsCount.textContent = deployments.length + " request(s) found for " + crNumber + ".";
+
+      deployments.forEach(function (record) {
+        const row = document.createElement("tr");
+        row.className = "request-row";
+        row.tabIndex = 0;
+        row.setAttribute("role", "button");
+        const slot = record.slot_start
+
+          ? displayTime(record.slot_start) + (record.slot_end ? " - " + displayTime(record.slot_end) : "")
+          : (record.slots || "");
+
+        const values = ["Open", record.cr_number, record.rfid, record.application_name,
+          record.deployment_date ? String(record.deployment_date).substring(0, 10) : "",
+          slot, record.deployment_type, record.change_type, record.status || "Pending"];
+
+        values.forEach(function (value, index) {
+          const cell = document.createElement("td");
+
+          if (index === 0) {
+            const button = document.createElement("button");
+
+            button.type = "button";
+
+            button.textContent = "Open";
+
+            button.addEventListener("click", function (event) {
+
+              event.stopPropagation(); selectDeployment(record, row);
+
+            });
+
+            cell.appendChild(button);
+
+          } else {
+            cell.textContent = value === null || value === undefined ? "" : String(value);
+          }
+
+          row.appendChild(cell);
+
+        });
+
+        row.addEventListener("click", function () { selectDeployment(record, row); });
+        row.addEventListener("keydown", function (event) {
+
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault(); selectDeployment(record, row);
+          }
+
+        });
+
+        resultsBody.appendChild(row);
+
+      });
+
+      resultsSection.classList.remove("hidden");
+
+      showMessage(deployments.length + " deployment request(s) found for " + crNumber + ". Select the request you want to open.", "success");
+
+    } catch (error) {
+      resultsSection.classList.add("hidden");
+      detailsCard.classList.add("hidden");
+      showMessage(error.message || "Unable to fetch deployment details.", "error");
+      console.error("DevOps lookup error:", error);
+
+    } finally {
+      fetchButton.disabled = false;
+      fetchButton.textContent = "Fetch Details";
+    }
+
+  }
+
+  function selectDeployment(record, selectedRow) {
+
+    try {
+      document.querySelectorAll("#crResultsBody tr").forEach(function (row) { row.classList.remove("selected"); });
+      selectedRow.classList.add("selected");
+      populateDetails(record);
+      showMessage("Loaded " + record.cr_number + " | RFID: " + record.rfid + " | Record ID: " + record.id, "success");
+      detailsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (error) {
+      showMessage(error.message || "Could not open the selected deployment.", "error");
+    }
+
+  }
+
+  async function loadPendingRequests() {
+    pendingBody.replaceChildren();
+    pendingMessage.textContent = "Loading pending requests...";
+
+    try {
+      const response = await fetch("/api/pending-deployments", { headers: { Accept: "application/json" }, cache: "no-store" });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Unable to load pending requests.");
+      const requests = Array.isArray(result.requests) ? result.requests : [];
+
+     if (!requests.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 7;
+        cell.textContent = "No pending requests.";
+        row.appendChild(cell);
+        pendingBody.appendChild(row);
+        pendingMessage.textContent = "0 pending request(s)";
+        return;
+      }
+
+      pendingMessage.textContent = requests.length + " pending request(s)";
+
+      requests.forEach(function (record) {
+
+       const row = document.createElement("tr");
+        row.className = "request-row";
+        const slot = displayTime(record.slot_start) + (record.slot_end ? " - " + displayTime(record.slot_end) : "");
+        [record.cr_number, record.rfid, record.application_name, record.deployment_date ? String(record.deployment_date).substring(0, 10) : "", slot, record.deployment_type, record.change_type].forEach(function (value) {
+
+          const cell = document.createElement("td");
+          cell.textContent = value === null || value === undefined ? "" : String(value);
+          row.appendChild(cell);
+
+        });
+
+        row.addEventListener("click", function () {
+
+          try {
+            populateDetails(record);
+            showMessage("Loaded request " + (record.cr_number || "") + " (ID " + record.id + ").", "success");
+            detailsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+          } catch (error) { showMessage(error.message, "error"); }
+        });
+
+        pendingBody.appendChild(row);
+      });
+
+    } catch (error) {
+      pendingMessage.textContent = error.message || "Unable to load pending requests.";
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 7;
+      cell.textContent = "Could not load requests. Check the Flask API and server logs.";
+      row.appendChild(cell);
+      pendingBody.appendChild(row);
+      console.error("Pending requests error:", error);
+    }
+
+  }
+
+  fetchButton.addEventListener("click", fetchDetails);
+
+  document.getElementById("refreshPendingButton").addEventListener("click", loadPendingRequests);
+
+  schedulePreviousDay.addEventListener("click", () => moveScheduleDate(-1));
+  scheduleNextDay.addEventListener("click", () => moveScheduleDate(1));
+  scheduleYesterday.addEventListener("click", () => jumpScheduleDate(-1));
+  scheduleToday.addEventListener("click", () => jumpScheduleDate(0));
+  scheduleTomorrow.addEventListener("click", () => jumpScheduleDate(1));
+  scheduleDateInput.addEventListener("change", function () {
+
+    if (scheduleDateInput.value) {
+      selectedScheduleDate = scheduleDateInput.value;
+      loadDailySchedule();
+    }
+
+  });
+
+  crInput.addEventListener("keydown", function (event) { if (event.key === "Enter") { event.preventDefault(); fetchDetails(); } });
+
+  saveChangesButton.addEventListener("click", async function () {
+
+    if (!currentDeploymentId) { showMessage("Select or fetch a deployment before saving.", "error"); return; }
+    const releasedByChoice = releasedBySelect.value;
+    const releasedBy = releasedByChoice === "__add__"
+      ? releasedByNewInput.value.trim()
+      : releasedByChoice.trim();
+
+    if (!releasedBy) {
+      showMessage("Select a Released By user or enter a new name.", "error");
+      return;
+    }
+
+    if (releasedBy.length > 100) {
+      showMessage("Released By name cannot exceed 100 characters.", "error");
+      return;
+    }
+
+    const verifiedByChoice = verifiedBySelect.value;
+
+    const verifiedByOther = verifiedByOtherInput.value.trim();
+
+    if (!verifiedByChoice) {
+      showMessage("Please select a Verified and Deployed By team.", "error");
+      verifiedBySelect.focus();
+      return;
+    }
+
+    if (verifiedByChoice === "__others__" && !verifiedByOther) {
+      showMessage("Please enter a name for Verified and Deployed By.", "error");
+      verifiedByOtherInput.focus();
+      return;
+    }
+
+    if (verifiedByOther.length > 100) {
+      showMessage("Verified and Deployed By name cannot exceed 100 characters.", "error");
+      verifiedByOtherInput.focus();
+      return;
+    }
+
+    const changeRequestorInput = document.getElementById("out_change_requestor");
+    const changeRequestor = changeRequestorInput.value.trim();
+
+    if (!changeRequestor) {
+      showMessage("Change Requestor is required.", "error");
+      changeRequestorInput.focus();
+      return;
+    }
+
+    if (changeRequestor.length > 150) {
+      showMessage("Change Requestor cannot exceed 150 characters.", "error");
+      changeRequestorInput.focus();
+      return;
+    }
+
+    const auditCredentials = getAuditCredentials();
+
+    if (!auditCredentials) return;
+    const payload = {
+      ...auditCredentials,
+      deployment_date: document.getElementById("out_deployment_date").value,
+      slot_start: document.getElementById("out_slot_start").value,
+      application_name: document.getElementById("out_application_name").value.trim(),
+      deployment_type: document.getElementById("out_deployment_type").value,
+      change_type: document.getElementById("out_change_type").value,
+      released_by: releasedBy,
+      verified_and_deployed_by: verifiedByChoice,
+      verified_and_deployed_by_other: verifiedByOther,
+      change_requestor: changeRequestor,
+      incident_number: document.getElementById("out_incident_number").value.trim(),
+      release_notes: document.getElementById("out_release_notes").value,
+      comments: document.getElementById("out_comments").value.trim(),
+      roll_back: document.getElementById("out_roll_back").value,
+      status: document.getElementById("out_status").value
+    };
+
+    saveChangesButton.disabled = true;
+
+    saveChangesButton.textContent = "Saving...";
+
+    try {
+      const response = await fetch("/api/deployment-by-id/" + encodeURIComponent(currentDeploymentId), {
+        method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Could not save deployment changes.");
+      showMessage(result.message || "Deployment changes saved.", "success");
+      auditPasscodeInput.value = "";
+      document.getElementById("resultBadge").textContent = payload.status;
+      await loadPendingRequests();
+      await loadDailySchedule();
+
+    } catch (error) { showMessage(error.message || "Could not save deployment changes.", "error"); }
+
+    finally { saveChangesButton.disabled = false; saveChangesButton.textContent = "Save Changes"; }
+
+  });
+
+  async function decideRequest(decision) {
+
+    if (!currentDeploymentId) { showMessage("Select a pending request first.", "error"); return; }
+    const label = decision === "approve" ? "approve" : "reject";
+    const auditCredentials = getAuditCredentials();
+
+    if (!auditCredentials) return;
+
+    if (!window.confirm("Are you sure you want to " + label + " this deployment request?")) return;
+    approveButton.disabled = true;
+    rejectButton.disabled = true;
+
+    try {
+      const response = await fetch("/api/deployment-approval/" + encodeURIComponent(currentDeploymentId), {
+        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ decision: decision, ...auditCredentials })
+      });
+
+     const result = await response.json();
+
+      if (!response.ok || !result.success) throw new Error(result.message || "Could not save the decision.");
+      showMessage(result.message || ("Request " + label + "d successfully."), "success");
+      auditPasscodeInput.value = "";
+      document.getElementById("resultBadge").textContent = result.status || (decision === "approve" ? "Approved" : "Rejected");
+      document.getElementById("out_status").value = result.status || (decision === "approve" ? "Approved" : "Rejected");
+      await loadPendingRequests();
+      await loadDailySchedule();
+      approveButton.disabled = true;
+      rejectButton.disabled = true;
+
+    } catch (error) {
+      showMessage(error.message || "Could not save the decision.", "error");
+      const status = String(document.getElementById("out_status").value || "").toLowerCase();
+      approveButton.disabled = status !== "pending";
+      rejectButton.disabled = status !== "pending";
+    }
+  }
+  approveButton.addEventListener("click", function () { decideRequest("approve"); });
+  rejectButton.addEventListener("click", function () { decideRequest("reject"); });
+
+  loadPendingRequests();
+
+  loadDailySchedule();
+
+});
+
+</script>
+
+</body>
+
+</html>

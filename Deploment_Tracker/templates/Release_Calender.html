@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Release Calendar | Deployment Tracker</title>
+
+    <style>
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 28px 16px;
+            background: #f3f5f9;
+            color: #202938;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 24px #00000010;
+        }
+
+        h1 { margin: 0 0 10px; font-size: 30px; }
+        .subtitle { margin: 0 0 25px; color: #64748b; }
+        .message {
+            padding: 13px 15px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .message.success {
+            color: #166534;
+            background: #dcfce7;
+            border: 1px solid #86efac;
+        }
+
+        .message.error {
+            color: #991b1b;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+        }
+
+        .page-layout {
+            display: grid;
+            grid-template-columns: minmax(300px, .85fr) minmax(0, 1.5fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        .slot-picker-field {
+            min-width: 0;
+            padding: 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: #f8fafc;
+            position: sticky;
+            top: 18px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 19px 18px;
+            min-width: 0;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .field.full, .form-actions { grid-column: 1 / -1; }
+        label { font-size: 14px; font-weight: 700; }
+        input, select, textarea {
+            width: 100%;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background: white;
+            color: #202938;
+            font: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid #2457d6;
+            outline-offset: 1px;
+        }
+
+        input[readonly] { background: #f8fafc; color: #475569; }
+        textarea { min-height: 110px; resize: vertical; }
+
+        .hint { color: #64748b; font-size: 12px; line-height: 1.5; }
+        .required { color: #dc2626; }
+
+        .cr-input-group { display: flex; width: 100%; }
+
+        .cr-prefix {
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #cbd5e1;
+            border-right: 0;
+            border-radius: 8px 0 0 8px;
+            font-weight: 700;
+        }
+
+        .cr-input-group input {
+            flex: 1;
+            min-width: 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .cr-message { min-height: 16px; font-size: 12px; line-height: 1.4; }
+        .cr-message.success { color: #15803d; }
+        .cr-message.error { color: #b91c1c; }
+
+        .month-calendar {
+            width: 100%;
+            max-width: 1050px;
+            margin: 0 auto 16px;
+            padding: 14px;
+            border: 1px solid #dbe4f0;
+            border-radius: 14px;
+            background: #ffffff;
+        }
+
+        .month-calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .month-calendar-title { font-size: 16px; font-weight: 700; color: #172554; }
+
+        .month-calendar-nav { display: flex; gap: 6px; }
+
+        .month-calendar-nav button {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 10px;
+            background: #f8fafc;
+            color: #1d4ed8;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .month-calendar-nav button:hover { background: #eff6ff; }
+
+        .month-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 4px;
+        }
+
+        .month-calendar-weekday {
+            padding: 3px 2px;
+            text-align: center;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .calendar-day, .calendar-empty {
+            min-height: 40px;
+            border-radius: 7px;
+        }
+
+        .calendar-empty { background: transparent; }
+
+        .calendar-day {
+            border: 1px solid #dbe4f0;
+            background: #fff;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            padding: 3px;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .calendar-day:hover:not(:disabled) { border-color: #2563eb; background: #eff6ff; }
+
+        .calendar-day .day-number { font-size: 12px; font-weight: 700; }
+
+        .calendar-day .day-caption { font-size: 8px; color: #64748b; }
+
+        .calendar-day.today { box-shadow: inset 0 0 0 1px #2563eb; }
+
+        .calendar-day.selected { background: #2457d6; border-color: #2457d6; color: #fff; }
+
+        .calendar-day.selected .day-caption { color: #e0e7ff; }
+
+        .calendar-day:disabled { cursor: not-allowed; color: #cbd5e1; background: #f8fafc; border-color: #edf0f5; }
+
+        .calendar-help { margin: 8px 0 0; color: #64748b; font-size: 11px; }
+
+        .calendar-launch-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 12px 0 20px;
+        }
+
+        .calendar-launch-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: 1px solid #bfd0f4;
+            border-radius: 9px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .calendar-launch-button:hover { background: #dbeafe; }
+
+        .selected-date-summary { color: #64748b; font-size: 12px; }
+
+        .calendar-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .calendar-modal[hidden] { display: none !important; }
+
+        .calendar-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, .48);
+        }
+
+        .calendar-dialog {
+            position: relative;
+            z-index: 1;
+            width: min(100%, 850px);
+            max-height: min(90vh, 760px);
+            overflow: auto;
+            padding: 16px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+        }
+
+        .calendar-dialog-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .calendar-dialog-top h2 {
+            margin: 0;
+            color: #172554;
+            font-size: 18px;
+        }
+
+        .calendar-close-button {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #334155;
+            cursor: pointer;
+            font-size: 21px;
+            line-height: 1;
+        }
+
+        .calendar-dialog .month-calendar {
+            max-width: none;
+            margin: 0;
+            padding: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .month-calendar { padding: 10px; }
+            .month-calendar-grid { gap: 3px; }
+            .calendar-day, .calendar-empty { min-height: 34px; }
+            .calendar-day .day-caption { font-size: 7px; }
+            .month-calendar-title { font-size: 15px; }
+            .month-calendar-nav button { padding: 5px 8px; }
+        }
+
+        .slot-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            margin: 14px 0 17px;
+            color: #475569;
+            font-size: 12px;
+        }
+
+        .slot-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+        .legend-dot {
+            width: 9px;
+            height: 9px;
+            display: inline-block;
+            border-radius: 50%;
+        }
+
+        .legend-dot.available { background: #16a34a; }
+
+        .legend-dot.pending { background: #f59e0b; }
+
+        .legend-dot.booked { background: #dc2626; }
+        .legend-dot.blocked { background: #9ca3af; }
+
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .slot-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 75px;
+            padding: 10px 4px;
+            margin: 0;
+            border: 1px solid transparent;
+            border-radius: 11px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .slot-time { font-size: 13px; }
+
+        .slot-state { font-size: 10px; font-weight: 600; }
+
+        .slot-tile.available {
+            color: #166534;
+            background: #dcfce7;
+            border-color: #86efac;
+            cursor: pointer;
+        }
+
+        .slot-tile.available:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px #16a34a22;
+        }
+
+        .slot-tile.pending {
+            color: #92400e;
+            background: #fef3c7;
+            border-color: #fcd34d;
+            cursor: not-allowed;
+        }
+
+        .slot-tile.booked {
+            color: #991b1b;
+            background: #fee2e2;
+            border-color: #fca5a5;
+            cursor: not-allowed;
+        }
+        .slot-tile.blocked {
+            color: #7f1d1d; background: #e5e7eb; border-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .slot-day-message { display:none; margin:0 0 12px; padding:12px; border:1px solid #fca5a5;
+            border-radius:9px; color:#991b1b; background:#fef2f2; font-size:13px; line-height:1.5; white-space:pre-wrap; }
+        .slot-day-message.visible { display:block; }
+        .slot-capacity-summary { margin:0 0 12px; color:#475569; font-size:12px; line-height:1.5; }
+
+        .slot-tile.selected {
+            outline: 3px solid #2563eb;
+            outline-offset: 2px;
+        }
+
+        .slot-tile:disabled { opacity: 1; }
+
+        .slot-loading {
+            grid-column: 1 / -1;
+            padding: 18px 10px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            color: #64748b;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .slot-selection {
+            margin: 14px 0 0;
+            color: #1d4ed8;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .submit-button {
+            width: 100%;
+            margin-top: 8px;
+            padding: 14px 22px;
+            border: none;
+            border-radius: 8px;
+            background: #2457d6;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .submit-button:hover { background: #1946b7; }
+
+        .submit-button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        @media (max-width: 850px) {
+            .page-layout { grid-template-columns: 1fr; }
+            .slot-picker-field { position: static; }
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .container { padding: 19px; }
+            h1 { font-size: 25px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .field.full, .form-actions { grid-column: 1; }
+            .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 360px) {
+            .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Release Calender</h1>
+
+    <p class="subtitle">Register a change request and schedule its deployment.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% for category, message in messages %}
+
+            <div class="message {{ category }}" role="alert">{{ message }}</div>
+
+        {% endfor %}
+
+    {% endwith %}
+
+    <div class="calendar-launch-row">
+        <button type="button" class="calendar-launch-button" id="openCalendarButton"
+                aria-haspopup="dialog" aria-controls="calendarModal">
+            📅 Select deployment date
+        </button>
+        <span class="selected-date-summary" id="selectedDateSummary" aria-live="polite">No date selected</span>
+    </div>
+
+    <div class="calendar-modal" id="calendarModal" hidden>
+        <div class="calendar-modal-backdrop" data-close-calendar="true"></div>
+        <div class="calendar-dialog" role="dialog" aria-modal="true"
+             aria-labelledby="calendarDialogHeading">
+
+            <div class="calendar-dialog-top">
+                <h2 id="calendarDialogHeading">Choose deployment date</h2>
+
+                <button type="button" class="calendar-close-button" id="closeCalendarButton"
+                        aria-label="Close calendar">×</button>
+            </div>
+
+            <section class="month-calendar" aria-label="Choose deployment date">
+                <div class="month-calendar-header">
+
+                    <div>
+                        <div class="month-calendar-title" id="calendarMonthTitle">Choose a deployment date</div>
+                        <div class="hint">Select a date to load its available 30-minute slots.</div>
+                    </div>
+
+                    <div class="month-calendar-nav">
+                        <button type="button" id="calendarPrevMonth" aria-label="Previous month">‹</button>
+                        <button type="button" id="calendarToday">This month</button>
+                        <button type="button" id="calendarNextMonth" aria-label="Next month">›</button>
+                    </div>
+                </div>
+
+                <div class="month-calendar-grid" id="monthCalendarGrid" role="group" aria-label="Calendar dates"></div>
+
+                <p class="calendar-help" id="calendarHelp">Choose a Change Type, then select a future date. Normal CR: Tuesday/Friday; Emergency CR: any day; other types: weekdays.</p>
+
+            </section>
+
+        </div>
+
+    </div>
+
+    <form method="POST" action="{{ url_for('Release_Calender') }}"
+          autocomplete="off" id="deploymentForm">
+
+        <div class="page-layout">
+            <section class="slot-picker-field">
+
+                <label>30-Minute Deployment Slots <span class="required">*</span></label>
+                <div id="slotDayMessage" class="slot-day-message" role="status" aria-live="polite"></div>
+                <p id="slotCapacitySummary" class="slot-capacity-summary">Capacity information will appear after choosing a date.</p>
+
+                <div class="slot-legend">
+                    <span><i class="legend-dot available"></i> Available</span>
+                    <span><i class="legend-dot pending"></i> Pending</span>
+                    <span><i class="legend-dot booked"></i> Booked</span>
+                    <span><i class="legend-dot blocked"></i> Blocked</span>
+                </div>
+
+                <div id="slotGrid" class="slot-grid" role="group"
+                     aria-label="Deployment time slots">
+                    <div class="slot-loading">Choose a deployment date to load slots.</div>
+                </div>
+
+                <p class="hint" id="slotTimeHelp">
+                    Each tile represents 30 minutes, from 6:30 PM to 11:00 PM. Orange and red slots cannot be selected.
+                </p>
+
+                <input type="hidden" id="slot_start" name="slot_start"
+                       value="{{ data.get('slot_start', '') }}" required>
+
+                <p class="slot-selection" id="slotSelection" aria-live="polite">
+                    No slot selected.
+                </p>
+
+            </section>
+
+            <div class="form-grid">
+
+                <div class="field">
+
+                    <label for="cr_suffix">CR Number <span class="required">*</span></label>
+
+                    <div class="cr-input-group">
+
+                        <span class="cr-prefix" aria-hidden="true">CR-</span>
+
+                        <input type="text" id="cr_suffix" inputmode="numeric"
+                               pattern="[0-9]+" maxlength="47"
+                               placeholder="Enter CR number" required>
+                    </div>
+
+                    <input type="hidden" id="cr_number" name="cr_number"
+                           value="{{ data.get('cr_number', '') }}">
+
+                    <span id="cr-message" class="cr-message" aria-live="polite"></span>
+
+                </div>
+
+                <div class="field">
+
+                    <label for="rfid">RFID</label>
+
+                    <input type="text" id="rfid"
+
+                           placeholder="Generated automatically after saving" readonly>
+
+                    <span class="hint">
+                        Existing CRs reuse their RFID. New CRs receive an 8-digit RFID after saving.
+                    </span>
+
+                </div>
+
+                <input type="hidden" id="deployment_date" name="deployment_date"
+                       value="{{ data.get('deployment_date', '') }}">
+
+                <div class="field">
+                    <label for="application_name">Application Name <span class="required">*</span></label>
+                    <input type="text" id="application_name" name="application_name"
+                           maxlength="150" value="{{ data.get('application_name', '') }}" required>
+                </div>
+
+                <div class="field">
+
+                    <label for="deployment_type">Deployment Type <span class="required">*</span></label>
+
+                    <select id="deployment_type" name="deployment_type" required>
+                        <option value="">Select type</option>
+                        {% for item in deployment_types %}
+                            <option value="{{ item }}"
+                                {% if data.get('deployment_type') == item %}selected{% endif %}>
+                                {{ item }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="change_type">Change Type <span class="required">*</span></label>
+                    <select id="change_type" name="change_type" required>
+                        <option value="">Select change type</option>
+
+                        {% for item in change_types %}
+
+                            <option value="{{ item }}"
+                                {% if data.get('change_type') == item %}selected{% endif %}>
+                                {{ item }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="field">
+                    <label for="change_requestor">Change Requestor <span class="required">*</span></label>
+                    <input type="text" id="change_requestor" name="change_requestor"
+                           placeholder="Business Owner Name" maxlength="150"
+                           value="{{ data.get('change_requestor', '') }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="incident_number">Incident Number</label>
+                    <input type="text" id="incident_number" name="incident_number"
+                           maxlength="50" value="{{ data.get('incident_number', '') }}">
+                </div>
+
+                <div class="field full">
+                    <label for="release_notes">Release Notes</label>
+                    <textarea id="release_notes" name="release_notes"
+                    placeholder="Enter release details...">{{ data.get('release_notes', '') }}</textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-button" id="saveButton">
+                        Save Deployment
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const crInput = document.getElementById("cr_number");
+
+    const crSuffix = document.getElementById("cr_suffix");
+
+    const rfidInput = document.getElementById("rfid");
+
+    const crMessage = document.getElementById("cr-message");
+
+    const form = document.getElementById("deploymentForm");
+
+    const saveButton = document.getElementById("saveButton");
+
+    const dateInput = document.getElementById("deployment_date");
+
+    const slotInput = document.getElementById("slot_start");
+
+    const changeTypeInput = document.getElementById("change_type");
+
+    const slotGrid = document.getElementById("slotGrid");
+
+    const slotSelection = document.getElementById("slotSelection");
+
+    const slotTimeHelp = document.getElementById("slotTimeHelp");
+    const slotDayMessage = document.getElementById("slotDayMessage");
+    const slotCapacitySummary = document.getElementById("slotCapacitySummary");
+
+    const lookupUrl = "{{ url_for('lookup_cr') }}";
+
+    const slotStatusUrl = "{{ url_for('slot_status') }}";
+
+    let lookupTimer = null;
+
+    let requestController = null;
+
+    let requestSequence = 0;
+
+    let isChecking = false;
+
+    let lookupFailed = false;
+
+    let selectedSlot = slotInput.value || "";
+
+    function normalizeCR(value) {
+        const suffix = value.trim().replace(/^CR-/i, "");
+        if (!/^\d*$/.test(suffix)) return null;
+        return suffix ? "CR-" + suffix : "";
+    }
+
+    function syncCRNumber() {
+        const normalized = normalizeCR(crSuffix.value);
+
+        if (normalized === null) {
+            crSuffix.setCustomValidity("Enter digits only after the CR- prefix.");
+            crInput.value = "";
+            return false;
+        }
+
+        crSuffix.setCustomValidity("");
+        crInput.value = normalized;
+        return normalized !== "";
+
+    }
+
+    function clearRFID() {
+        rfidInput.value = "";
+    }
+
+    function showMessage(text, type) {
+        crMessage.textContent = text;
+
+        crMessage.className = "cr-message";
+
+        if (type) crMessage.classList.add(type);
+
+    }
+
+    async function checkCRNumber() {
+        const crNumber = crInput.value.trim();
+        const sequence = ++requestSequence;
+
+        if (requestController) {
+            requestController.abort();
+            requestController = null;
+        }
+
+        clearRFID();
+
+        lookupFailed = false;
+
+        if (!crNumber) {
+            isChecking = false;
+            showMessage("", "");
+            return;
+        }
+
+        isChecking = true;
+
+        showMessage("Checking CR Number...", "");
+
+        const controller = new AbortController();
+
+        requestController = controller;
+
+        try {
+            const response = await fetch(
+                lookupUrl + "?cr_number=" + encodeURIComponent(crNumber),
+
+                {
+                    headers: { "Accept": "application/json" },
+                    signal: controller.signal,
+                    cache: "no-store"
+                }
+
+            );
+
+            if (!response.ok) {
+                const body = await response.text();
+                let message = "Lookup failed with HTTP " + response.status;
+
+                try {
+                    const parsed = JSON.parse(body);
+                    if (parsed.error) message = parsed.error;
+                } catch (_) {}
+                throw new Error(message);
+            }
+
+            const result = await response.json();
+
+            if (sequence !== requestSequence) return;
+
+            if (crInput.value.trim() !== crNumber) return;
+
+            if (result.error) throw new Error(result.error);
+
+            if (result.exists) {
+                rfidInput.value = result.rfid || "";
+                showMessage("Existing CR found. Its RFID will be reused.", "success");
+
+            } else {
+                clearRFID();
+                showMessage("New CR. RFID will be generated after saving.", "success");
+            }
+
+            lookupFailed = false;
+
+        } catch (error) {
+
+            if (error.name === "AbortError") return;
+
+            if (sequence !== requestSequence) return;
+
+            clearRFID();
+
+            lookupFailed = true;
+
+            showMessage("CR verification failed. Please retry before saving.", "error");
+
+            console.error("CR lookup error:", error);
+
+        } finally {
+
+            if (sequence === requestSequence) {
+                isChecking = false;
+                requestController = null;
+            }
+
+        }
+
+    }
+
+    crSuffix.addEventListener("input", function () {
+
+        const normalized = normalizeCR(crSuffix.value);
+
+        if (normalized === null) {
+            crSuffix.setCustomValidity("Enter digits only after the CR- prefix.");
+            crInput.value = "";
+            return;
+        }
+
+        crSuffix.setCustomValidity("");
+
+        crSuffix.value = normalized.replace(/^CR-/, "");
+
+        crInput.value = normalized;
+
+        clearTimeout(lookupTimer);
+
+        if (requestController) requestController.abort();
+
+        requestSequence++;
+
+        isChecking = false;
+
+        lookupFailed = false;
+
+        clearRFID();
+
+        showMessage("", "");
+
+        lookupTimer = setTimeout(checkCRNumber, 350);
+
+    });
+
+    crSuffix.addEventListener("change", function () {
+
+        clearTimeout(lookupTimer);
+
+        if (syncCRNumber()) checkCRNumber();
+
+    });
+
+    function formatSlotTime(value) {
+        const [hourText, minute] = value.split(":");
+        const hour = Number(hourText);
+        const suffix = hour >= 12 ? "PM" : "AM";
+        return `${((hour + 11) % 12) + 1}:${minute} ${suffix}`;
+    }
+
+    async function loadSlots() {
+
+        if (!dateInput.value) {
+            slotDayMessage.classList.remove("visible");
+            slotDayMessage.textContent = "";
+            slotCapacitySummary.textContent = "Capacity information will appear after choosing a date.";
+
+            slotGrid.innerHTML =
+
+                '<div class="slot-loading">Choose a deployment date to load slots.</div>';
+
+            slotInput.value = "";
+
+            selectedSlot = "";
+
+            slotSelection.textContent = "No slot selected.";
+
+            return;
+
+        }
+
+        slotGrid.innerHTML =
+
+            '<div class="slot-loading">Loading availability...</div>';
+
+        try {
+            const response = await fetch(
+                slotStatusUrl + "?date=" + encodeURIComponent(dateInput.value)
+                    + "&change_type=" + encodeURIComponent(changeTypeInput.value || ""),
+
+                {
+
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+
+                }
+
+            );
+
+            if (!response.ok) {
+                const body = await response.text();
+                let message = "Could not load slot availability.";
+
+                try {
+                    const parsed = JSON.parse(body);
+
+                    if (parsed.error) message = parsed.error;
+
+                } catch (_) {}
+                throw new Error(message);
+            }
+
+            const result = await response.json();
+
+            slotGrid.innerHTML = "";
+            slotDayMessage.classList.remove("visible");
+            slotDayMessage.textContent = "";
+            if (result.blocked) {
+                slotDayMessage.textContent = "BLOCKED DATE: " + dateInput.value +
+                    "\nReason: " + (result.block_message || "No reason was provided.");
+                slotDayMessage.classList.add("visible");
+            }
+            const capacity = Number(result.max_cr_per_slot || 1);
+            const totalBooked = (result.slots || []).reduce((sum, slot) =>
+                sum + Number(slot.booked_count || 0), 0);
+            const totalCapacity = (result.slots || []).length * capacity;
+            slotCapacitySummary.textContent = result.blocked
+                ? "This date is blocked. All deployment slots are unavailable."
+                : "Capacity: " + capacity + " CR(s) per 30-minute slot. Booked: " +
+                  totalBooked + " of " + totalCapacity + " total capacity.";
+
+            if (changeTypeInput.value === "Emergency CR") {
+                slotTimeHelp.textContent = "Emergency CR: 30-minute slots are available throughout the day and night. Orange and red slots cannot be selected.";
+                slotSelection.textContent = "Emergency CR: choose any available 30-minute time, day or night.";
+
+            } else {
+                slotTimeHelp.textContent = "Each tile represents 30 minutes, from 6:30 PM to 11:00 PM. Orange and red slots cannot be selected.";
+                slotSelection.textContent = "No slot selected.";
+            }
+
+            result.slots.forEach(function (slot) {
+                const tile = document.createElement("button");
+                tile.type = "button";
+                tile.className = "slot-tile " + slot.state;
+                tile.dataset.start = slot.start;
+
+                const label = slot.state === "blocked"
+                    ? "Blocked"
+                    : slot.state === "available"
+                        ? (slot.booked_count || 0) + "/" + (slot.capacity || capacity) + " available"
+                        : slot.state === "pending" ? "Pending"
+                        : "Full (" + (slot.booked_count || 0) + "/" + (slot.capacity || capacity) + ")";
+
+                const timeLabel = document.createElement("span");
+
+                timeLabel.className = "slot-time";
+
+                timeLabel.textContent = formatSlotTime(slot.start);
+
+                const stateLabel = document.createElement("span");
+
+                stateLabel.className = "slot-state";
+
+                stateLabel.textContent = label;
+
+                tile.append(timeLabel, stateLabel);
+
+                const canSelect = slot.state === "available" && !result.blocked;
+
+                tile.disabled = !canSelect;
+                if (slot.state === "blocked" || result.blocked) {
+                    tile.classList.add("blocked");
+                    tile.title = "Blocked: " + (result.block_message || "This date is blocked by the Super Manager.");
+                } else {
+                    tile.title = slot.status || "Available";
+                }
+
+                tile.setAttribute(
+                    "aria-label",
+                    formatSlotTime(slot.start) + " to " +
+                    formatSlotTime(slot.end) + ", " + label + (result.block_message ? ", " + result.block_message : "")
+                );
+
+                if (canSelect) {
+                    tile.addEventListener("click", function () {
+                        selectedSlot = slot.start;
+                        slotInput.value = slot.start;
+                        slotGrid.querySelectorAll(".slot-tile").forEach(function (item) {
+                            item.classList.remove("selected");
+                        });
+
+                        tile.classList.add("selected");
+
+                        slotSelection.textContent =
+                            "Selected: " + formatSlotTime(slot.start) +
+                            " - " + formatSlotTime(slot.end);
+
+                    });
+
+                }
+
+                if (slot.start === selectedSlot && canSelect) {
+                    tile.classList.add("selected");
+                }
+                slotGrid.appendChild(tile);
+            });
+
+            const selected = result.slots.find(function (slot) {
+                return slot.start === selectedSlot;
+            });
+
+            if (result.blocked || !selected || selected.state !== "available") {
+                selectedSlot = "";
+                slotInput.value = "";
+                slotSelection.textContent = "Choose a green slot to continue.";
+
+            } else {
+                slotInput.value = selectedSlot;
+                slotSelection.textContent =
+                    "Selected: " + formatSlotTime(selected.start) +
+                    " - " + formatSlotTime(selected.end);
+            }
+
+        } catch (error) {
+            slotGrid.innerHTML =
+                '<div class="slot-loading">Could not load slots. Refresh or try again.</div>';
+            slotInput.value = "";
+            selectedSlot = "";
+            slotSelection.textContent = "Slot availability could not be verified.";
+            console.error("Slot availability error:", error);
+        }
+
+    }
+    const calendarTitle = document.getElementById("calendarMonthTitle");
+
+    const calendarGrid = document.getElementById("monthCalendarGrid");
+
+    const previousMonthButton = document.getElementById("calendarPrevMonth");
+
+    const nextMonthButton = document.getElementById("calendarNextMonth");
+
+    const thisMonthButton = document.getElementById("calendarToday");
+
+    const calendarHelp = document.getElementById("calendarHelp");
+
+    const calendarModal = document.getElementById("calendarModal");
+
+    const openCalendarButton = document.getElementById("openCalendarButton");
+
+    const closeCalendarButton = document.getElementById("closeCalendarButton");
+
+    const selectedDateSummary = document.getElementById("selectedDateSummary");
+
+    function updateCalendarLauncher() {
+
+        if (dateInput.value) {
+            const chosen = new Date(dateInput.value + "T12:00:00");
+            selectedDateSummary.textContent = "Selected: " + chosen.toLocaleDateString(undefined, {
+                weekday: "short", day: "numeric", month: "short", year: "numeric"
+            });
+
+            openCalendarButton.textContent = "📅 Change date";
+
+        } else {
+            selectedDateSummary.textContent = "No date selected";
+            openCalendarButton.textContent = "📅 Select deployment date";
+        }
+
+    }
+
+    function openCalendar() {
+        renderMonthCalendar();
+        calendarModal.hidden = false;
+        document.body.style.overflow = "hidden";
+        closeCalendarButton.focus();
+    }
+
+    function closeCalendar() {
+        calendarModal.hidden = true;
+        document.body.style.overflow = "";
+        openCalendarButton.focus();
+    }
+
+    openCalendarButton.addEventListener("click", openCalendar);
+
+    closeCalendarButton.addEventListener("click", closeCalendar);
+
+    calendarModal.addEventListener("click", function (event) {
+
+        if (event.target && event.target.dataset.closeCalendar === "true") {
+            closeCalendar();
+        }
+
+    });
+
+    document.addEventListener("keydown", function (event) {
+
+        if (event.key === "Escape" && !calendarModal.hidden) closeCalendar();
+
+    });
+
+    const todayLocal = new Date();
+
+    todayLocal.setHours(0, 0, 0, 0);
+
+    let calendarMonth = dateInput.value
+
+        ? new Date(dateInput.value + "T12:00:00")
+
+        : new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1);
+
+    calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+
+    function dateToISO(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function isDateAllowedForChangeType(date, changeType) {
+        const day = date.getDay(); // Sunday=0, Tuesday=2, Friday=5
+
+        if (date < todayLocal) return false;
+
+        if (!changeType) return true; // Users may choose a date before choosing the type.
+
+        if (changeType === "Emergency CR") return true;
+
+        if (changeType === "Normal CR") return day === 2 || day === 5;
+
+        return day !== 0 && day !== 6; // Standard, Forward Fix, Bug Fix: weekdays only
+
+    }
+
+    function renderMonthCalendar() {
+        calendarTitle.textContent = calendarMonth.toLocaleDateString(undefined, {
+            month: "long", year: "numeric"
+        });
+
+        calendarGrid.innerHTML = "";
+
+        ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach(function (day) {
+            const heading = document.createElement("div");
+            heading.className = "month-calendar-weekday";
+            heading.textContent = day;
+            calendarGrid.appendChild(heading);
+        });
+
+        const year = calendarMonth.getFullYear();
+
+        const month = calendarMonth.getMonth();
+
+        const firstDay = new Date(year, month, 1);
+
+        const offset = (firstDay.getDay() + 6) % 7; // Monday-first calendar
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < offset; i++) {
+            const empty = document.createElement("div");
+            empty.className = "calendar-empty";
+            empty.setAttribute("aria-hidden", "true");
+            calendarGrid.appendChild(empty);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            date.setHours(0, 0, 0, 0);
+            const iso = dateToISO(date);
+            const isPast = date < todayLocal;
+            const allowedForType = isDateAllowedForChangeType(date, changeTypeInput.value);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "calendar-day";
+            button.dataset.date = iso;
+            button.setAttribute("aria-label", date.toLocaleDateString(undefined, {
+                weekday: "long", year: "numeric", month: "long", day: "numeric"
+            }));
+
+            if (iso === dateToISO(todayLocal)) button.classList.add("today");
+
+            if (dateInput.value === iso) {
+                button.classList.add("selected");
+                button.setAttribute("aria-pressed", "true");
+            } else {
+
+                button.setAttribute("aria-pressed", "false");
+
+            }
+
+            const number = document.createElement("span");
+
+            number.className = "day-number";
+
+            number.textContent = String(day);
+
+            button.appendChild(number);
+
+            const caption = document.createElement("span");
+
+            caption.className = "day-caption";
+
+            caption.textContent = iso === dateToISO(todayLocal) ? "Today" : "";
+
+            button.appendChild(caption);
+
+            // Apply date restrictions for the selected Change Type.
+
+            button.disabled = !allowedForType;
+
+            if (button.disabled) {
+
+                if (isPast) {
+                    button.title = "Past dates cannot be booked";
+
+                } else if (changeTypeInput.value === "Normal CR") {
+                    button.title = "Normal CR deployments are allowed only on Tuesdays and Fridays";
+
+                } else {
+                    button.title = "This change type is allowed only Monday through Friday";
+
+                }
+
+            }
+
+            button.addEventListener("click", function () {
+                dateInput.value = iso;
+                dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+                renderMonthCalendar();
+                updateCalendarLauncher();
+                closeCalendar();
+                calendarHelp.style.color = "";
+
+                calendarHelp.textContent = "Selected " + date.toLocaleDateString(undefined, {
+                    weekday: "short", day: "numeric", month: "short", year: "numeric"
+                }) + ". Choose a green slot below.";
+
+                document.getElementById("slotGrid").scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+            });
+
+            calendarGrid.appendChild(button);
+
+        }
+
+    }
+
+    previousMonthButton.addEventListener("click", function () {
+        calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+        renderMonthCalendar();
+    });
+
+    nextMonthButton.addEventListener("click", function () {
+        calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+        renderMonthCalendar();
+    });
+
+    thisMonthButton.addEventListener("click", function () {
+        calendarMonth = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1);
+        renderMonthCalendar();
+    });
+
+    changeTypeInput.addEventListener("change", function () {
+        selectedSlot = "";
+        slotInput.value = "";
+        renderMonthCalendar();
+
+        if (dateInput.value) {
+            const selectedDate = new Date(dateInput.value + "T12:00:00");
+
+            if (!isDateAllowedForChangeType(selectedDate, changeTypeInput.value)) {
+                dateInput.value = "";
+                updateCalendarLauncher();
+                slotGrid.innerHTML = '<div class="slot-loading">Choose an allowed date to load slots.</div>';
+                slotSelection.textContent = "No slot selected.";
+                calendarHelp.style.color = "#b91c1c";
+                calendarHelp.textContent = changeTypeInput.value === "Normal CR"
+                    ? "Normal CR deployments are allowed only on Tuesdays and Fridays. Choose another date."
+                    : "This change type allows weekday bookings only. Choose another date.";
+                return;
+            }
+        }
+        loadSlots();
+    });
+
+    dateInput.addEventListener("change", function () {
+        selectedSlot = "";
+        slotInput.value = "";
+
+        if (dateInput.value) {
+            const changedDate = new Date(dateInput.value + "T12:00:00");
+            calendarMonth = new Date(changedDate.getFullYear(), changedDate.getMonth(), 1);
+        }
+
+        renderMonthCalendar();
+
+        updateCalendarLauncher();
+
+        loadSlots();
+
+    });
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        clearTimeout(lookupTimer);
+
+        if (!syncCRNumber()) {
+            crSuffix.reportValidity();
+            return;
+        }
+
+        if (!dateInput.value) {
+            calendarHelp.textContent = "Please choose a deployment date from the calendar.";
+            calendarHelp.style.color = "#b91c1c";
+            openCalendar();
+            return;
+        }
+
+        if (!slotInput.value) {
+            slotSelection.textContent = "Please choose a green, available slot.";
+            slotGrid.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
+
+        if (isChecking) {
+            showMessage("Please wait while the CR Number is checked.", "error");
+            return;
+        }
+
+        saveButton.disabled = true;
+
+        saveButton.textContent = "Checking...";
+
+        try {
+            await checkCRNumber();
+
+            if (lookupFailed || isChecking) {
+                showMessage("CR verification failed. Please retry before saving.", "error");
+                return;
+            }
+
+            const response = await fetch(
+                slotStatusUrl + "?date=" + encodeURIComponent(dateInput.value)
+                    + "&change_type=" + encodeURIComponent(changeTypeInput.value || ""),
+                {
+
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+
+                }
+
+            );
+
+            if (!response.ok) throw new Error("Unable to verify slot availability.");
+            const result = await response.json();
+            const selected = result.slots.find(function (slot) {
+                return slot.start === slotInput.value;
+            });
+
+            if (result.blocked || !selected || selected.state !== "available") {
+                selectedSlot = "";
+                slotInput.value = "";
+                await loadSlots();
+
+                showMessage(
+                    "This slot is no longer available. Select a green slot.",
+                    "error"
+                );
+                return;
+            }
+
+            saveButton.textContent = "Submitting...";
+            form.submit();
+
+        } catch (error) {
+            console.error("Pre-submit verification failed:", error);
+            showMessage("Verification failed. Please retry before saving.", "error");
+
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = "Save Deployment";
+        }
+
+    });
+
+    // Initialize the CR field from the hidden input populated by Flask.
+
+const initialCR = crInput.value || "";
+
+const initialSuffix = initialCR.replace(/^CR-/i, "");
+
+crSuffix.value = initialSuffix;
+
+crInput.value = initialSuffix ? "CR-" + initialSuffix : "";
+
+renderMonthCalendar();
+
+updateCalendarLauncher();
+
+loadSlots();
+
+if (crInput.value) {
+    checkCRNumber();
+}
+
+});
+
+</script>
+
+</body>
+
+</html>
